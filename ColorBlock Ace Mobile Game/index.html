@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2a003f">
+    <title>ColorBlock Ace</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --c-black:  #1a1a2e;
+            --c-gray:   #8e9bb5;
+            --c-white:  #f0f0f5;
+            --c-purple: #9b30d9;
+            --bg-top:   #2a003f;
+            --bg-bot:   #0d001a;
+            --cell-size: min(13.5vw, 72px);
+            --gap: min(1.5vw, 7px);
+        }
+
+        html, body {
+            height: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        body {
+            background: linear-gradient(160deg, var(--bg-top), var(--bg-bot));
+            font-family: 'Nunito', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: env(safe-area-inset-top, 12px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 12px) env(safe-area-inset-left, 0px);
+        }
+
+        /* stars bg */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                radial-gradient(1px 1px at 15% 20%, rgba(255,255,255,0.6) 0%, transparent 100%),
+                radial-gradient(1px 1px at 40% 10%, rgba(255,255,255,0.4) 0%, transparent 100%),
+                radial-gradient(1px 1px at 70% 30%, rgba(255,255,255,0.5) 0%, transparent 100%),
+                radial-gradient(1px 1px at 85% 15%, rgba(255,255,255,0.3) 0%, transparent 100%),
+                radial-gradient(1px 1px at 25% 75%, rgba(255,255,255,0.4) 0%, transparent 100%),
+                radial-gradient(1px 1px at 55% 85%, rgba(255,255,255,0.5) 0%, transparent 100%),
+                radial-gradient(1px 1px at 90% 70%, rgba(255,255,255,0.3) 0%, transparent 100%),
+                radial-gradient(2px 2px at 10% 50%, rgba(255,255,255,0.2) 0%, transparent 100%),
+                radial-gradient(2px 2px at 60% 55%, rgba(255,255,255,0.2) 0%, transparent 100%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        #app {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0 12px;
+            gap: 10px;
+            padding-top: max(12px, env(safe-area-inset-top, 12px));
+            padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+        }
+
+        header {
+            text-align: center;
+            width: 100%;
+        }
+
+        h1 {
+            font-family: 'Fredoka One', cursive;
+            font-size: clamp(28px, 8vw, 42px);
+            color: #fff;
+            letter-spacing: 1px;
+            text-shadow: 0 0 20px rgba(180,80,255,0.7), 0 2px 8px rgba(0,0,0,0.5);
+            line-height: 1.1;
+        }
+
+        .tagline {
+            font-size: clamp(11px, 3vw, 14px);
+            color: rgba(255,255,255,0.55);
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        /* stats bar */
+        .stats {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .stat-card {
+            flex: 1;
+            max-width: 130px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 16px;
+            padding: 8px 12px;
+            text-align: center;
+            backdrop-filter: blur(8px);
+        }
+
+        .stat-val {
+            font-family: 'Fredoka One', cursive;
+            font-size: clamp(22px, 6vw, 32px);
+            color: #fff;
+            line-height: 1;
+        }
+
+        .stat-lbl {
+            font-size: 11px;
+            color: rgba(255,255,255,0.45);
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        /* message */
+        #msg {
+            font-size: clamp(12px, 3.5vw, 15px);
+            color: rgba(255,255,255,0.75);
+            font-weight: 700;
+            text-align: center;
+            min-height: 20px;
+            letter-spacing: 0.01em;
+        }
+
+        /* grid */
+        #grid-wrap {
+            background: rgba(0,0,0,0.35);
+            border: 1.5px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: var(--gap);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(6, var(--cell-size));
+            grid-template-rows: repeat(6, var(--cell-size));
+            gap: var(--gap);
+            touch-action: none;
+        }
+
+        .cell {
+            width: var(--cell-size);
+            height: var(--cell-size);
+            min-width: 44px;
+            min-height: 44px;
+            border-radius: clamp(8px, 2vw, 12px);
+            cursor: pointer;
+            transition: transform 0.12s cubic-bezier(.34,1.56,.64,1);
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.25);
+        }
+
+        .cell::after {
+            content: '';
+            position: absolute;
+            top: 12%;
+            left: 12%;
+            width: 35%;
+            height: 25%;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            filter: blur(2px);
+            pointer-events: none;
+        }
+
+        .cell.selected {
+            transform: scale(1.18) translateY(-2px);
+            box-shadow: 0 0 0 3px #fff, 0 0 0 5px #c060ff, 0 8px 20px rgba(180,80,255,0.5);
+            z-index: 10;
+        }
+
+        .cell.matched {
+            animation: pop 0.38s cubic-bezier(.36,.07,.19,.97) forwards;
+        }
+
+        @keyframes pop {
+            0%   { transform: scale(1); opacity: 1; }
+            40%  { transform: scale(1.35); opacity: 1; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        .cell.hint-pulse {
+            animation: hintpulse 0.6s ease-in-out 2;
+        }
+        @keyframes hintpulse {
+            0%,100% { box-shadow: 0 3px 8px rgba(0,0,0,0.4); }
+            50% { box-shadow: 0 0 0 4px #ffe066, 0 8px 20px rgba(255,220,50,0.6); }
+        }
+
+        /* buttons */
+        .actions {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        button {
+            flex: 1;
+            max-width: 160px;
+            padding: clamp(10px, 2.5vw, 14px) 0;
+            border-radius: 50px;
+            border: none;
+            font-family: 'Nunito', sans-serif;
+            font-size: clamp(14px, 3.5vw, 16px);
+            font-weight: 800;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        button:active { transform: scale(0.95); }
+
+        #newBtn {
+            background: linear-gradient(135deg, #c060ff, #7000cc);
+            color: #fff;
+            box-shadow: 0 4px 18px rgba(160,40,255,0.45);
+        }
+
+        #hintBtn {
+            background: rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.8);
+            border: 1.5px solid rgba(255,255,255,0.2);
+        }
+
+        /* color legend */
+        .legend {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+
+        /* game over overlay */
+        #overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(6px);
+        }
+
+        #overlay.show { display: flex; }
+
+        .over-box {
+            background: linear-gradient(135deg, #2a003f, #0d001a);
+            border: 1.5px solid rgba(180,80,255,0.4);
+            border-radius: 28px;
+            padding: 36px 32px;
+            text-align: center;
+            max-width: 320px;
+            width: 85vw;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+        }
+
+        .over-title {
+            font-family: 'Fredoka One', cursive;
+            font-size: 36px;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .over-score {
+            font-family: 'Fredoka One', cursive;
+            font-size: 56px;
+            color: #c060ff;
+            text-shadow: 0 0 30px rgba(180,80,255,0.6);
+            margin-bottom: 6px;
+        }
+
+        .over-lbl {
+            font-size: 14px;
+            color: rgba(255,255,255,0.5);
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 28px;
+        }
+
+        .over-btn {
+            width: 100%;
+            padding: 16px;
+            border-radius: 50px;
+            border: none;
+            background: linear-gradient(135deg, #c060ff, #7000cc);
+            color: #fff;
+            font-family: 'Nunito', sans-serif;
+            font-size: 18px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(160,40,255,0.5);
+        }
+    </style>
+</head>
+<body>
+
+<div id="overlay">
+    <div class="over-box">
+        <div class="over-title">Game Over!</div>
+        <div class="over-score" id="final-score">0</div>
+        <div class="over-lbl">Final Score</div>
+        <button class="over-btn" id="playAgainBtn">Play Again 🎮</button>
+    </div>
+</div>
+
+<div id="app">
+    <header>
+        <h1>ColorBlock Ace <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 24" width="36" height="24" style="display:inline-block;vertical-align:middle;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.4);margin-left:4px" aria-label="Asexual Pride Flag"><rect width="36" height="6" y="0"  fill="#1a1a1a"/><rect width="36" height="6" y="6"  fill="#a4a4a4"/><rect width="36" height="6" y="12" fill="#ffffff"/><rect width="36" height="6" y="18" fill="#810081"/></svg></h1>
+        <div class="tagline">For every Asexual &amp; including me 🖤🩶🤍💜</div>
+    </header>
+
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-val" id="score">0</div>
+            <div class="stat-lbl">Score</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-val" id="moves">20</div>
+            <div class="stat-lbl">Moves</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-val" id="combo">x1</div>
+            <div class="stat-lbl">Combo</div>
+        </div>
+    </div>
+
+    <div id="msg">Tap a block, then tap an adjacent block!</div>
+
+    <div id="grid-wrap">
+        <div id="grid"></div>
+    </div>
+
+    <div class="actions">
+        <button id="hintBtn">💡 Hint</button>
+        <button id="newBtn">🔄 New Game</button>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#1a1a2e;border:1px solid #444"></div>Black</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#8e9bb5"></div>Gray</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f0f0f5"></div>White</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#9b30d9"></div>Purple</div>
+    </div>
+</div>
+
+<script>
+const COLS = 6, ROWS = 6;
+const COLOR_NAMES = ['black','gray','white','purple'];
+const COLOR_STYLES = [
+    'radial-gradient(circle at 35% 35%, #3a3a5c, #0d0d1a)', // black
+    'radial-gradient(circle at 35% 35%, #b0bcd4, #5a6880)', // gray
+    'radial-gradient(circle at 35% 35%, #ffffff, #c8cfe0)', // white
+    'radial-gradient(circle at 35% 35%, #c060ff, #6a00cc)'  // purple
+];
+let board = [], selected = null, score = 0, moves = 20, busy = false, combo = 0;
+
+const gridEl    = document.getElementById('grid');
+const scoreEl   = document.getElementById('score');
+const movesEl   = document.getElementById('moves');
+const comboEl   = document.getElementById('combo');
+const msgEl     = document.getElementById('msg');
+const overlay   = document.getElementById('overlay');
+const finalScore= document.getElementById('final-score');
+
+function idx(r,c){ return r*COLS+c; }
+function rand(){ return Math.floor(Math.random()*COLOR_NAMES.length); }
+
+function initBoard(){
+    board = Array.from({length:ROWS*COLS}, ()=>rand());
+    for(let r=0;r<ROWS;r++)
+        for(let c=0;c<COLS;c++)
+            while(hasMatchAt(r,c)) board[idx(r,c)]=rand();
+}
+
+function hasMatchAt(r,c){
+    const v=board[idx(r,c)];
+    if(c>=2 && board[idx(r,c-1)]===v && board[idx(r,c-2)]===v) return true;
+    if(r>=2 && board[idx(r-1,c)]===v && board[idx(r-2,c)]===v) return true;
+    return false;
+}
+
+function findMatches(){
+    const m=new Set();
+    for(let r=0;r<ROWS;r++)
+        for(let c=0;c<COLS-2;c++){
+            const v=board[idx(r,c)];
+            if(v!==null && board[idx(r,c+1)]===v && board[idx(r,c+2)]===v){
+                let k=c; while(k<COLS && board[idx(r,k)]===v){ m.add(idx(r,k)); k++; }
+            }
+        }
+    for(let c=0;c<COLS;c++)
+        for(let r=0;r<ROWS-2;r++){
+            const v=board[idx(r,c)];
+            if(v!==null && board[idx(r+1,c)]===v && board[idx(r+2,c)]===v){
+                let k=r; while(k<ROWS && board[idx(k,c)]===v){ m.add(idx(k,c)); k++; }
+            }
+        }
+    return m;
+}
+
+function findHint(){
+    // try every possible swap and see if it creates a match
+    for(let r=0;r<ROWS;r++){
+        for(let c=0;c<COLS;c++){
+            const neighbors=[[r-1,c],[r+1,c],[r,c-1],[r,c+1]];
+            for(const [nr,nc] of neighbors){
+                if(nr<0||nr>=ROWS||nc<0||nc>=COLS) continue;
+                [board[idx(r,c)],board[idx(nr,nc)]]=[board[idx(nr,nc)],board[idx(r,c)]];
+                const m=findMatches();
+                [board[idx(r,c)],board[idx(nr,nc)]]=[board[idx(nr,nc)],board[idx(r,c)]];
+                if(m.size>0) return [r,c,nr,nc];
+            }
+        }
+    }
+    return null;
+}
+
+function render(){
+    gridEl.innerHTML='';
+    for(let r=0;r<ROWS;r++){
+        for(let c=0;c<COLS;c++){
+            const cell=document.createElement('div');
+            cell.className='cell';
+            const v=board[idx(r,c)];
+            if(v!==null){
+                cell.style.background = COLOR_STYLES[v];
+                cell.dataset.color = COLOR_NAMES[v];
+                cell.dataset.r=r; cell.dataset.c=c;
+                if(selected && selected[0]===r && selected[1]===c) cell.classList.add('selected');
+                cell.addEventListener('click', onCellClick);
+                cell.addEventListener('touchend', e=>{ e.preventDefault(); onCellClick({currentTarget:cell}); });
+            } else {
+                cell.style.opacity='0';
+                cell.style.pointerEvents='none';
+            }
+            gridEl.appendChild(cell);
+        }
+    }
+}
+
+function onCellClick(e){
+    if(busy||moves<=0) return;
+    const r=+e.currentTarget.dataset.r;
+    const c=+e.currentTarget.dataset.c;
+    if(!selected){
+        selected=[r,c];
+        msgEl.textContent='Now tap an adjacent block to swap!';
+        render(); return;
+    }
+    const [sr,sc]=selected;
+    if(sr===r&&sc===c){ selected=null; render(); return; }
+    const adj=(Math.abs(sr-r)===1&&sc===c)||(Math.abs(sc-c)===1&&sr===r);
+    if(!adj){ selected=[r,c]; render(); return; }
+    selected=null;
+    doSwap(sr,sc,r,c);
+}
+
+function doSwap(r1,c1,r2,c2){
+    [board[idx(r1,c1)],board[idx(r2,c2)]]=[board[idx(r2,c2)],board[idx(r1,c1)]];
+    const matches=findMatches();
+    if(matches.size===0){
+        setTimeout(()=>{
+            [board[idx(r1,c1)],board[idx(r2,c2)]]=[board[idx(r2,c2)],board[idx(r1,c1)]];
+            msgEl.textContent='No match — try another swap!';
+            combo=0; comboEl.textContent='x1';
+            render();
+        },200);
+        render(); return;
+    }
+    moves--; movesEl.textContent=moves;
+    render();
+    busy=true;
+    combo=0;
+    processMatches(matches);
+}
+
+function processMatches(matches){
+    if(matches.size===0){
+        busy=false;
+        combo=0; comboEl.textContent='x1';
+        if(moves<=0){
+            setTimeout(()=>{
+                finalScore.textContent=score;
+                overlay.classList.add('show');
+            },400);
+            return;
+        }
+        msgEl.textContent='Tap a block to swap!';
+        return;
+    }
+    combo++;
+    const multiplier=Math.min(combo,5);
+    const pts=matches.size*10*multiplier;
+    score+=pts;
+    scoreEl.textContent=score;
+    comboEl.textContent=`x${multiplier}`;
+    msgEl.textContent=combo>1 ? `🔥 COMBO x${multiplier}! +${pts} pts!` : `+${pts} points! 🎉`;
+
+    matches.forEach(i=>{ const cell=gridEl.children[i]; if(cell) cell.classList.add('matched'); });
+
+    setTimeout(()=>{
+        matches.forEach(i=>{ board[i]=null; });
+        for(let c=0;c<COLS;c++){
+            let empty=ROWS-1;
+            for(let r=ROWS-1;r>=0;r--){
+                if(board[idx(r,c)]!==null){
+                    board[idx(empty,c)]=board[idx(r,c)];
+                    if(empty!==r) board[idx(r,c)]=null;
+                    empty--;
+                }
+            }
+            for(let r=empty;r>=0;r--) board[idx(r,c)]=rand();
+        }
+        render();
+        setTimeout(()=>processMatches(findMatches()),260);
+    },400);
+}
+
+function newGame(){
+    score=0; moves=20; selected=null; busy=false; combo=0;
+    scoreEl.textContent=0; movesEl.textContent=20; comboEl.textContent='x1';
+    msgEl.textContent='Tap a block, then tap an adjacent block!';
+    overlay.classList.remove('show');
+    initBoard(); render();
+}
+
+document.getElementById('newBtn').addEventListener('click', newGame);
+document.getElementById('playAgainBtn').addEventListener('click', newGame);
+document.getElementById('hintBtn').addEventListener('click', ()=>{
+    if(busy||moves<=0) return;
+    const hint=findHint();
+    if(!hint){ msgEl.textContent='No moves available — try New Game!'; return; }
+    const [r,c]=hint;
+    const i=idx(r,c);
+    const cell=gridEl.children[i];
+    if(cell){ cell.classList.add('hint-pulse'); setTimeout(()=>cell.classList.remove('hint-pulse'),1300); }
+    msgEl.textContent='💡 Try tapping the glowing block!';
+});
+
+newGame();
+</script>
+</body>
+</html>
