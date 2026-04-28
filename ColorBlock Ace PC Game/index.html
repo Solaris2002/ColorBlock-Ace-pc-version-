@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ColorBlock Ace</title>
+</head>
+<style>
+    body {
+        background: violet;
+        font-family: Arial, Helvetica, sans-serif;
+    }
+
+    h1 {
+        text-align: center;
+        font-size: 40px;
+        padding-top: 10px;
+    }
+
+    p {
+        text-align: center;
+        font-size: 18pt;
+    }
+
+    .stats {
+        text-align: center;
+        font-size: 20px;
+        margin: 10px;
+    }
+
+    .stats span {
+        margin: 0 20px;
+    }
+
+    #grid {
+        display: grid;
+        grid-template-columns: repeat(6, 60px);
+        grid-template-rows: repeat(6, 60px);
+        gap: 6px;
+        justify-content: center;
+        margin: 20px auto;
+    }
+
+    .cell {
+        width: 60px;
+        height: 60px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: transform 0.1s;
+    }
+
+    .cell:hover {
+        transform: scale(1.08);
+    }
+
+    .cell.selected {
+        transform: scale(1.15);
+        outline: 3px solid yellow;
+    }
+
+    .cell.matched {
+        animation: pop 0.35s forwards;
+    }
+
+    @keyframes pop {
+        0%   { transform: scale(1); }
+        50%  { transform: scale(1.3); }
+        100% { transform: scale(0); opacity: 0; }
+    }
+
+    #newBtn {
+        display: block;
+        margin: 0 auto;
+        padding: 10px 30px;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 8px;
+        border: none;
+        background: white;
+        color: purple;
+        font-weight: bold;
+    }
+
+    #newBtn:hover {
+        background: #ddd;
+    }
+
+    #msg {
+        text-align: center;
+        font-size: 16px;
+        margin: 10px;
+        color: white;
+        font-weight: bold;
+    }
+</style>
+<body>
+
+    <h1>ColorBlock Ace</h1>
+    <p>I created this matching block game for all the Asexuals including me.</p>
+    <p>HOW TO PLAY: Connect 3 or more blocks across or straight down!</p>
+
+    <div class="stats">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>Moves: <strong id="moves">20</strong></span>
+    </div>
+
+    <div id="msg">Click a block, then click an adjacent block to swap!</div>
+    <div id="grid"></div>
+    <button id="newBtn">New Game</button>
+
+<script>
+    const COLS = 6, ROWS = 6;
+    const COLORS = ['black', 'gray', 'white', 'purple'];
+    let board = [], selected = null, score = 0, moves = 20, busy = false;
+
+    const gridEl  = document.getElementById('grid');
+    const scoreEl = document.getElementById('score');
+    const movesEl = document.getElementById('moves');
+    const msgEl   = document.getElementById('msg');
+
+    function idx(r, c) { return r * COLS + c; }
+    function randColor() { return Math.floor(Math.random() * COLORS.length); }
+
+    function initBoard() {
+        board = Array.from({length: ROWS * COLS}, () => randColor());
+        // prevent matches at start
+        for (let r = 0; r < ROWS; r++)
+            for (let c = 0; c < COLS; c++)
+                while (hasMatchAt(r, c)) board[idx(r,c)] = randColor();
+    }
+
+    function hasMatchAt(r, c) {
+        const v = board[idx(r,c)];
+        if (c >= 2 && board[idx(r,c-1)] === v && board[idx(r,c-2)] === v) return true;
+        if (r >= 2 && board[idx(r-1,c)] === v && board[idx(r-2,c)] === v) return true;
+        return false;
+    }
+
+    function findMatches() {
+        const matched = new Set();
+        // horizontal
+        for (let r = 0; r < ROWS; r++)
+            for (let c = 0; c < COLS - 2; c++) {
+                const v = board[idx(r,c)];
+                if (v !== null && board[idx(r,c+1)] === v && board[idx(r,c+2)] === v) {
+                    let k = c;
+                    while (k < COLS && board[idx(r,k)] === v) { matched.add(idx(r,k)); k++; }
+                }
+            }
+        // vertical
+        for (let c = 0; c < COLS; c++)
+            for (let r = 0; r < ROWS - 2; r++) {
+                const v = board[idx(r,c)];
+                if (v !== null && board[idx(r+1,c)] === v && board[idx(r+2,c)] === v) {
+                    let k = r;
+                    while (k < ROWS && board[idx(k,c)] === v) { matched.add(idx(k,c)); k++; }
+                }
+            }
+        return matched;
+    }
+
+    function render() {
+        gridEl.innerHTML = '';
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                const v = board[idx(r,c)];
+                if (v !== null) {
+                    cell.style.background = COLORS[v];
+                    cell.dataset.r = r;
+                    cell.dataset.c = c;
+                    if (selected && selected[0] === r && selected[1] === c)
+                        cell.classList.add('selected');
+                    cell.addEventListener('click', onCellClick);
+                } else {
+                    cell.style.background = 'transparent';
+                    cell.style.pointerEvents = 'none';
+                }
+                gridEl.appendChild(cell);
+            }
+        }
+    }
+
+    function onCellClick(e) {
+        if (busy || moves <= 0) return;
+        const r = +e.currentTarget.dataset.r;
+        const c = +e.currentTarget.dataset.c;
+        if (!selected) {
+            selected = [r, c];
+            msgEl.textContent = 'Now click an adjacent block to swap!';
+            render();
+            return;
+        }
+        const [sr, sc] = selected;
+        if (sr === r && sc === c) { selected = null; render(); return; }
+        const adj = (Math.abs(sr-r) === 1 && sc === c) || (Math.abs(sc-c) === 1 && sr === r);
+        if (!adj) { selected = [r, c]; render(); return; }
+        selected = null;
+        doSwap(sr, sc, r, c);
+    }
+
+    function doSwap(r1, c1, r2, c2) {
+        [board[idx(r1,c1)], board[idx(r2,c2)]] = [board[idx(r2,c2)], board[idx(r1,c1)]];
+        const matches = findMatches();
+        if (matches.size === 0) {
+            setTimeout(() => {
+                [board[idx(r1,c1)], board[idx(r2,c2)]] = [board[idx(r2,c2)], board[idx(r1,c1)]];
+                msgEl.textContent = 'No match — try another swap!';
+                render();
+            }, 200);
+            render();
+            return;
+        }
+        moves--;
+        movesEl.textContent = moves;
+        render();
+        busy = true;
+        processMatches(matches);
+    }
+
+    function processMatches(matches) {
+        if (matches.size === 0) {
+            busy = false;
+            if (moves <= 0) { msgEl.textContent = `Game over! Final score: ${score}`; return; }
+            msgEl.textContent = 'Click a block to swap!';
+            return;
+        }
+        score += matches.size * 10;
+        scoreEl.textContent = score;
+        msgEl.textContent = `+${matches.size * 10} points!`;
+
+        matches.forEach(i => {
+            const cell = gridEl.children[i];
+            if (cell) cell.classList.add('matched');
+        });
+
+        setTimeout(() => {
+            matches.forEach(i => { board[i] = null; });
+            // gravity
+            for (let c = 0; c < COLS; c++) {
+                let empty = ROWS - 1;
+                for (let r = ROWS - 1; r >= 0; r--) {
+                    if (board[idx(r,c)] !== null) {
+                        board[idx(empty,c)] = board[idx(r,c)];
+                        if (empty !== r) board[idx(r,c)] = null;
+                        empty--;
+                    }
+                }
+                for (let r = empty; r >= 0; r--) board[idx(r,c)] = randColor();
+            }
+            render();
+            setTimeout(() => processMatches(findMatches()), 250);
+        }, 380);
+    }
+
+    function newGame() {
+        score = 0; moves = 20; selected = null; busy = false;
+        scoreEl.textContent = 0; movesEl.textContent = 20;
+        msgEl.textContent = 'Click a block, then click an adjacent block to swap!';
+        initBoard();
+        render();
+    }
+
+    document.getElementById('newBtn').addEventListener('click', newGame);
+    newGame();
+</script>
+
+</body>
+</html>
